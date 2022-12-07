@@ -11,21 +11,29 @@ const formatInputData = R.pipe<
   number[][][]
 >(R.split('\n'), R.map(formatLine));
 
+const isContained = ([[start1, end1], [start2, end2]]: [
+  [number, number],
+  [number, number],
+]) =>
+  (start1 <= start2 && end1 >= end2) ||
+  (start2 <= start1 && end2 >= end1);
+
+const isOverlapping = ([[start1, end1], [start2, end2]]: [
+  [number, number],
+  [number, number],
+]) =>
+  (start2 >= start1 && start2 <= end1) ||
+  (end2 >= start1 && end2 <= end1);
+
 const countContainedPairs = R.pipe(
   formatInputData,
-  R.count(
-    ([[start1, end1], [start2, end2]]) =>
-      (start1 <= start2 && end1 >= end2) ||
-      (start2 <= start1 && end2 >= end1),
-  ),
+  R.count(isContained),
 );
 
-const countOverlappingPairs = R.pipe(
+const countOverlappingAndContainedPairs = R.pipe(
   formatInputData,
   R.count(
-    ([[start1, end1], [start2, end2]]) =>
-      (start2 >= start1 && start2 <= end1) ||
-      (end2 >= start1 && end2 <= end1),
+    (pair) => isOverlapping(pair) || isContained(pair),
   ),
 );
 
@@ -37,5 +45,5 @@ console.debug(
 );
 console.debug(
   'Challenge 2: ',
-  countOverlappingPairs(inputData),
+  countOverlappingAndContainedPairs(inputData),
 );
