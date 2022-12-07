@@ -4,12 +4,6 @@ import { getInput } from '../utils';
 
 type Instruction = [number, number, number];
 
-const isInstruction = (
-  arr: unknown[],
-): arr is Instruction =>
-  arr.length === 3 &&
-  arr.every((x) => typeof x === 'number');
-
 const parseInstruction = R.pipe<
   [string],
   string[],
@@ -21,9 +15,6 @@ const parseInstruction = R.pipe<
   // TODO Could I use an Option monad here?
   R.map(Number),
 );
-
-const isLetter = (str: string): boolean =>
-  /[a-z]/i.test(str);
 
 const formatStart = R.pipe<
   [string],
