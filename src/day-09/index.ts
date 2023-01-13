@@ -20,19 +20,19 @@ const convertMotionToVector: (str: Motion) => Vector =
     R.cond([
       [
         isDirection('U'),
-        ([_, magnitude]) => [magnitude, 0],
-      ],
-      [
-        isDirection('R'),
         ([_, magnitude]) => [0, magnitude],
       ],
       [
+        isDirection('R'),
+        ([_, magnitude]) => [magnitude, 0],
+      ],
+      [
         isDirection('D'),
-        ([_, magnitude]) => [magnitude * -1, 0],
+        ([_, magnitude]) => [0, -1 * magnitude],
       ],
       [
         isDirection('L'),
-        ([_, magnitude]) => [0, -1 * magnitude],
+        ([_, magnitude]) => [magnitude * -1, 0],
       ],
     ]),
   );
@@ -75,6 +75,60 @@ const applyVectorToPosition = (
   [px, py]: Position,
 ): Position => [px + vx, py + vy];
 
+const getMinAndMax = (
+  numbers: number[],
+): [number, number] => [
+  Math.min(...numbers),
+  Math.max(...numbers),
+];
+
+const printGrid = (grid: string[][]): void => {
+  console.log('\n');
+  grid.forEach((row) => {
+    console.log(row.join(''));
+  });
+  console.log('\n');
+};
+
+const emptyGrid = (size: number): string[][] => {
+  const row = new Array(size).fill('.');
+  const grid = new Array(size).fill([...row]);
+
+  return JSON.parse(JSON.stringify(grid));
+};
+
+const plotPositions = (
+  positions: { head: Position; tail: Position[] }[],
+): void => {
+  const [min, max] = R.pipe(
+    R.map(R.values),
+    R.flatten,
+    getMinAndMax,
+  )(positions);
+
+  const size = max - min;
+
+  const modifiedPositions = R.map(({ head, tail }) => ({
+    head: head.map((x) => x + Math.abs(min)),
+    tail: tail.map((x) => x.map((y) => y + Math.abs(min))),
+  }))(positions);
+
+  modifiedPositions.map(({ head, tail }) => {
+    const grid = emptyGrid(size);
+    const [hx, hy] = head;
+
+    grid[Math.abs(min) - 1][Math.abs(min) - 1] = 's';
+
+    grid[hy - 1][hx - 1] = 'H';
+
+    tail.forEach(([tx, ty], i) => {
+      grid[ty - 1][tx - 1] = `${i + 1}`;
+    });
+
+    printGrid(grid.reverse());
+  });
+};
+
 const countVisited = R.pipe(
   formatInputData,
   R.reduce<
@@ -82,41 +136,84 @@ const countVisited = R.pipe(
     {
       visited: Set<string>;
       headPosition: Position;
-      tailPosition: Position;
+      tailPosition: Position[];
+      positions: { head: Position; tail: Position[] }[];
     }
   >(
-    ({ visited, headPosition, tailPosition }, vector) => {
+    (
+      { visited, headPosition, tailPosition, positions },
+      vector,
+    ) => {
       const nextHeadPosition = applyVectorToPosition(
         vector,
         headPosition,
       );
 
-      const tailPositions = interpolateTailToHead(
-        tailPosition,
-        nextHeadPosition,
-      );
+      const { visitedArr, tailPosition: nextTailPosition } =
+        tailPosition.reduce(
+          (
+            { tailPosition, prevTailPosition },
+            currentTailPosition,
+            i,
+            arr,
+          ) => {
+            const isLast = i === arr.length - 1;
+            const positions = interpolateTailToHead(
+              currentTailPosition,
+              prevTailPosition,
+            );
 
-      const nextTailPosition = R.last(tailPositions);
+            const nextTailPosition = R.last(positions);
 
-      tailPositions.forEach((x) =>
-        visited.add(x.toString()),
-      );
+            const res = {
+              tailPosition: [
+                ...tailPosition,
+                nextTailPosition,
+              ],
+              prevTailPosition: nextTailPosition,
+              visitedArr: isLast ? positions : [],
+            };
+
+            return res;
+          },
+          {
+            tailPosition: [],
+            prevTailPosition: nextHeadPosition,
+            visitedArr: [],
+          },
+        );
+
+      visitedArr.forEach((x) => visited.add(x.toString()));
 
       return {
         visited,
         headPosition: nextHeadPosition,
         tailPosition: nextTailPosition,
+        positions: [
+          ...positions,
+          {
+            head: nextHeadPosition,
+            tail: nextTailPosition,
+          },
+        ],
       };
     },
     {
       visited: new Set(),
       headPosition: [0, 0],
-      tailPosition: [0, 0],
+      tailPosition: new Array(9).fill([0, 0]),
+      positions: [],
     },
   ),
+  R.tap(({ positions }) => plotPositions(positions)),
   ({ visited }) => visited.size,
 );
 
-const inputData = getInput(import.meta.dir, 'input.txt');
+const inputData = getInput(
+  import.meta.dir,
+  'basic-input-2.txt',
+);
 
 console.debug('Challenge 1: ', countVisited(inputData));
+
+// 2466 - too low
