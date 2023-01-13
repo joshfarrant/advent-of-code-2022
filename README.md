@@ -1,4 +1,4 @@
-# advent-of-code-22-bun
+# Advent of Code 2022
 
 To install dependencies:
 
